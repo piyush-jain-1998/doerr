@@ -11,10 +11,11 @@ import { Server, Socket } from 'socket.io';
 
 @WebSocketGateway({
   cors: {
-    cors: {
-      origin: '*', // Allow all origins
-      methods: ['GET', 'POST'], // Optional: Define allowed methods
-    }}
+    origin: '*', // Allow all origins
+    methods: ['GET', 'POST'], // Allowed HTTP methods
+    allowedHeaders: ['Content-Type'], // Optional: allowed headers
+    credentials: false, 
+    }
 })
 export class WebsocketsModule implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
