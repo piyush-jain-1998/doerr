@@ -23,7 +23,7 @@
 
   <script>
     // Connect to the WebSocket server
-    const socket = new WebSocket('http://localhost:3000');
+    const socket = io('http://localhost:3000'); // Replace with your server URL if necessary
     const roomInput = document.getElementById('room');
     const messageInput = document.getElementById('message');
     const messagesDiv = document.getElementById('messages');
