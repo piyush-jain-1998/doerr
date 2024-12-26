@@ -13,10 +13,6 @@ let AppService = class AppService {
         this.value = "";
     }
     getHello() {
-        return this.value;
-    }
-    setHello(data) {
-        this.value = data;
         return 'Hello World!';
     }
 };
