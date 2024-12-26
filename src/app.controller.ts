@@ -12,4 +12,5 @@ export class AppController {
     const currentUrl = `${protocol}://${host}${req.originalUrl}`;
     return `Current URL is: ${currentUrl}`;
   }
+  
 }
