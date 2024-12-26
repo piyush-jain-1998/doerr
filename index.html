@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebSocket Chat</title>
+  <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+</head>
+<body>
+  <h1>WebSocket Chat</h1>
+  <div>
+    <label for="room">Room:</label>
+    <input type="text" id="room" placeholder="Enter room name">
+    <button id="joinRoom">Join Room</button>
+    <button id="leaveRoom">Leave Room</button>
+  </div>
+  <div>
+    <label for="message">Message:</label>
+    <input type="text" id="message" placeholder="Enter message">
+    <button id="sendMessage">Send Message</button>
+  </div>
+  <div id="messages"></div>
+
+  <script>
+    // Connect to the WebSocket server
+    const socket = io('http://localhost:3000'); // Replace with your server URL if necessary
+
+    const roomInput = document.getElementById('room');
+    const messageInput = document.getElementById('message');
+    const messagesDiv = document.getElementById('messages');
+
+    // Join a room
+    document.getElementById('joinRoom').addEventListener('click', () => {
+      const room = roomInput.value.trim();
+      if (room) {
+        socket.emit('subscribeToRoom', room);
+        console.log(`Joined room: ${room}`);
+      } else {
+        alert('Please enter a room name!');
+      }
+    });
+
+    // Leave a room
+    document.getElementById('leaveRoom').addEventListener('click', () => {
+      const room = roomInput.value.trim();
+      if (room) {
+        socket.emit('unsubscribeFromRoom', room);
+        console.log(`Left room: ${room}`);
+      } else {
+        alert('Please enter a room name!');
+      }
+    });
+
+    // Send a message
+    document.getElementById('sendMessage').addEventListener('click', () => {
+      const room = roomInput.value.trim();
+      const text = messageInput.value.trim();
+      if (room && text) {
+        socket.emit('sendMessage', { room, sender: 'Frontend User', text });
+        messageInput.value = ''; // Clear the input field
+      } else {
+        alert('Please enter both room name and message!');
+      }
+    });
+
+    // Listen for messages
+    socket.on('receiveMessage', (message) => {
+      const messageElement = document.createElement('p');
+      messageElement.textContent = `${message.sender}: ${message.text}`;
+      messagesDiv.appendChild(messageElement);
+    });
+
+    // Handle connection events
+    socket.on('connect', () => {
+      console.log('Connected to WebSocket server');
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Disconnected from WebSocket server');
+    });
+  </script>
+</body>
+</html>
