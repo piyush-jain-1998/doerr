@@ -1,13 +1,15 @@
-import { Controller, Get } from '@nestjs/common';
-import { AppService } from './app.service';
+import { Controller, Get, Req } from '@nestjs/common';
+import { Request } from 'express';
 
 @Controller()
 export class AppController {
-  constructor(private readonly appService: AppService) {}
+  constructor() {}
 
   @Get()
-  getHello(): string {
-    return this.appService.getHello();
+  getCurrentUrl(@Req() req: Request): string {
+    const protocol = req.protocol; // 'http' or 'https'
+    const host = req.get('host');  // 'localhost:3000' or 'your-railway-url.com'
+    const currentUrl = `${protocol}://${host}${req.originalUrl}`;
+    return `Current URL is: ${currentUrl}`;
   }
-
 }
