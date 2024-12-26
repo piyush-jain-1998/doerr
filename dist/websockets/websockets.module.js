@@ -68,10 +68,10 @@ __decorate([
 exports.WebsocketsModule = WebsocketsModule = __decorate([
     (0, websockets_1.WebSocketGateway)({
         cors: {
-            cors: {
-                origin: '*',
-                methods: ['GET', 'POST'],
-            }
+            origin: '*',
+            methods: ['GET', 'POST'],
+            allowedHeaders: ['Content-Type'],
+            credentials: false,
         }
     })
 ], WebsocketsModule);
