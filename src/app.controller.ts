@@ -1,9 +1,15 @@
 import { Controller, Get, Req } from '@nestjs/common';
+import { EventPattern } from '@nestjs/microservices';
 import { Request } from 'express';
 
 @Controller()
 export class AppController {
   constructor() {}
+  
+  @EventPattern('message_channel') // Redis channel name
+  handleMessage(data: any) {
+    console.log('Received data:', data);
+  }
 
   @Get()
   getCurrentUrl(@Req() req: Request): string {

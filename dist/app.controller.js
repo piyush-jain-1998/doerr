@@ -14,8 +14,12 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppController = void 0;
 const common_1 = require("@nestjs/common");
+const microservices_1 = require("@nestjs/microservices");
 let AppController = class AppController {
     constructor() { }
+    handleMessage(data) {
+        console.log('Received data:', data);
+    }
     getCurrentUrl(req) {
         const protocol = req.protocol;
         const host = req.get('host');
@@ -24,6 +28,12 @@ let AppController = class AppController {
     }
 };
 exports.AppController = AppController;
+__decorate([
+    (0, microservices_1.EventPattern)('message_channel'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], AppController.prototype, "handleMessage", null);
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Req)()),

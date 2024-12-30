@@ -14,17 +14,46 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.WebsocketsModule = void 0;
 const websockets_1 = require("@nestjs/websockets");
+const common_1 = require("@nestjs/common");
 const socket_io_1 = require("socket.io");
+const redis_adapter_1 = require("@socket.io/redis-adapter");
+const redis_1 = require("redis");
 let WebsocketsModule = class WebsocketsModule {
+    async onModuleInit() {
+        await this.connectRedisDb();
+    }
+    async connectRedisDb() {
+        this.pubClient = (0, redis_1.createClient)({
+            socket: {
+                host: 'redis-14156.c91.us-east-1-3.ec2.redns.redis-cloud.com',
+                port: 14156,
+            },
+            username: 'default',
+            password: 'mFCFtJe34soC1XJx5nTXijP1hY2IPcDR',
+        });
+        this.pubClient.on('error', (err) => {
+            console.error('Redis connection error:', err.message);
+        });
+        this.subClient = this.pubClient.duplicate();
+        await Promise.all([this.pubClient.connect(), this.subClient.connect()]);
+        this.server.adapter((0, redis_adapter_1.createAdapter)(this.pubClient, this.subClient));
+        console.log('Redis connected and Socket.IO server initialized');
+        this.pubClient.publish('connectInRedis', `new connection establised`);
+    }
     handleConnection(client) {
         console.log(`Client connected: ${client.id}`);
+        this.pubClient.publish('connectInRedis', `Client connected: ${client.id}`);
+        this.pubClient.publish('do', `new Connecton`);
+        this.publishMessage('do', 'backend', "hello world");
+        this.subscribeToRedisRoom("*");
     }
     handleDisconnect(client) {
         console.log(`Client disconnected: ${client.id}`);
     }
     handleSubscribeToRoom(room, client) {
+        this.chatRoom = room;
         client.join(room);
-        console.log(`Client ${client.id} subscribed to room: ${room}`);
+        this.pubClient.publish(room, `Client ${client.id} subscribed to room: ${room}`);
     }
     handleUnsubscribeFromRoom(room, client) {
         client.leave(room);
@@ -33,7 +62,15 @@ let WebsocketsModule = class WebsocketsModule {
     handleMessage(data, client) {
         const { room, sender, text } = data;
         console.log(`Message received in room ${room}: ${text} from ${sender}`);
-        this.server.to(room).emit('receiveMessage', { sender, text });
+        this.pubClient.publish(room, JSON.stringify({ sender, text }));
+    }
+    async subscribeToRedisRoom(roomName) {
+        this.subClient.subscribe(roomName, (message) => {
+            console.log(`Message received in room ${roomName} from Redis: ${message}`);
+        });
+    }
+    publishMessage(room, sender, text) {
+        this.pubClient.publish(room, JSON.stringify({ sender, text }));
     }
 };
 exports.WebsocketsModule = WebsocketsModule;
@@ -66,13 +103,11 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], WebsocketsModule.prototype, "handleMessage", null);
 exports.WebsocketsModule = WebsocketsModule = __decorate([
-    (0, websockets_1.WebSocketGateway)({
+    (0, common_1.Injectable)(),
+    (0, websockets_1.WebSocketGateway)(3000, {
         cors: {
             origin: '*',
-            methods: ['GET', 'POST'],
-            allowedHeaders: ['Content-Type'],
-            credentials: false,
-        }
+        },
     })
 ], WebsocketsModule);
 //# sourceMappingURL=websockets.module.js.map
