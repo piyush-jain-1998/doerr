@@ -19,6 +19,10 @@ const socket_io_1 = require("socket.io");
 const redis_adapter_1 = require("@socket.io/redis-adapter");
 const redis_1 = require("redis");
 let WebsocketsModule = class WebsocketsModule {
+    async afterInit() {
+        console.log('WebSocket server initialized');
+        this.subscribeToRedisRoom();
+    }
     async onModuleInit() {
         await this.connectRedisDb();
     }
@@ -38,14 +42,11 @@ let WebsocketsModule = class WebsocketsModule {
         await Promise.all([this.pubClient.connect(), this.subClient.connect()]);
         this.server.adapter((0, redis_adapter_1.createAdapter)(this.pubClient, this.subClient));
         console.log('Redis connected and Socket.IO server initialized');
-        this.pubClient.publish('connectInRedis', `new connection establised`);
+        this.pubClient.publish('connectInRedis', `New connection established`);
     }
     handleConnection(client) {
         console.log(`Client connected: ${client.id}`);
         this.pubClient.publish('connectInRedis', `Client connected: ${client.id}`);
-        this.pubClient.publish('do', `new Connecton`);
-        this.publishMessage('do', 'backend', "hello world");
-        this.subscribeToRedisRoom("*");
     }
     handleDisconnect(client) {
         console.log(`Client disconnected: ${client.id}`);
@@ -53,21 +54,27 @@ let WebsocketsModule = class WebsocketsModule {
     handleSubscribeToRoom(room, client) {
         this.chatRoom = room;
         client.join(room);
+        console.log(`Client ${client.id} subscribed to room: ${room}`);
         this.pubClient.publish(room, `Client ${client.id} subscribed to room: ${room}`);
     }
     handleUnsubscribeFromRoom(room, client) {
         client.leave(room);
         console.log(`Client ${client.id} unsubscribed from room: ${room}`);
+        this.pubClient.publish(room, `Client ${client.id} unsubscribed from room: ${room}`);
     }
     handleMessage(data, client) {
         const { room, sender, text } = data;
         console.log(`Message received in room ${room}: ${text} from ${sender}`);
         this.pubClient.publish(room, JSON.stringify({ sender, text }));
     }
-    async subscribeToRedisRoom(roomName) {
-        this.subClient.subscribe(roomName, (message) => {
-            console.log(`Message received in room ${roomName} from Redis: ${message}`);
-        });
+    async subscribeToRedisRoom() {
+        console.log("Subscribing to Redis messages for rooms");
+        if (this.chatRoom) {
+            this.subClient.subscribe(this.chatRoom, (message) => {
+                console.log(`Message received in room ${this.chatRoom} from Redis: ${message}`);
+                this.server.to(this.chatRoom).emit('message', { room: this.chatRoom, message });
+            });
+        }
     }
     publishMessage(room, sender, text) {
         this.pubClient.publish(room, JSON.stringify({ sender, text }));

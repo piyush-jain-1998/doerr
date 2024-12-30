@@ -6,6 +6,7 @@ import {
   SubscribeMessage,
   MessageBody,
   ConnectedSocket,
+  OnGatewayInit,
 } from '@nestjs/websockets';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
@@ -18,18 +19,23 @@ import { createClient } from 'redis';
     origin: '*', // Allow all origins, adjust for production
   },
 })
-export class WebsocketsModule implements OnGatewayConnection, OnGatewayDisconnect, OnModuleInit {
+export class WebsocketsModule implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect, OnModuleInit {
   @WebSocketServer() server: Server;
   private pubClient: any;
   private subClient: any;
-
   private chatRoom: string;
+
+  async afterInit() {
+    console.log('WebSocket server initialized');
+    this.subscribeToRedisRoom(); // Only subscribe once during initialization
+  }
 
   async onModuleInit() {
     await this.connectRedisDb();
   }
 
   async connectRedisDb() {
+    // Create and connect to the Redis client
     this.pubClient = createClient({
       socket: {
         host: 'redis-14156.c91.us-east-1-3.ec2.redns.redis-cloud.com', // Replace with your Redis host
@@ -42,22 +48,20 @@ export class WebsocketsModule implements OnGatewayConnection, OnGatewayDisconnec
     this.pubClient.on('error', (err) => {
       console.error('Redis connection error:', err.message);
     });
+
     this.subClient = this.pubClient.duplicate();
 
     await Promise.all([this.pubClient.connect(), this.subClient.connect()]);
 
+    // Connect the pub/sub clients to the Redis adapter
     this.server.adapter(createAdapter(this.pubClient, this.subClient));
     console.log('Redis connected and Socket.IO server initialized');
-    this.pubClient.publish('connectInRedis',  `new connection establised`);
-
+    this.pubClient.publish('connectInRedis', `New connection established`);
   }
 
   handleConnection(client: Socket) {
     console.log(`Client connected: ${client.id}`);
-    this.pubClient.publish('connectInRedis',  `Client connected: ${client.id}`);
-    this.pubClient.publish('do',  `new Connecton`);
-    this.publishMessage('do','backend',"hello world")
-    this.subscribeToRedisRoom("*");
+    this.pubClient.publish('connectInRedis', `Client connected: ${client.id}`);
   }
 
   handleDisconnect(client: Socket) {
@@ -72,8 +76,8 @@ export class WebsocketsModule implements OnGatewayConnection, OnGatewayDisconnec
   ) {
     this.chatRoom = room;
     client.join(room);
-    this.pubClient.publish(room,  `Client ${client.id} subscribed to room: ${room}`);
-
+    console.log(`Client ${client.id} subscribed to room: ${room}`);
+    this.pubClient.publish(room, `Client ${client.id} subscribed to room: ${room}`);
   }
 
   // Client unsubscribes from a specific room
@@ -84,6 +88,7 @@ export class WebsocketsModule implements OnGatewayConnection, OnGatewayDisconnec
   ) {
     client.leave(room);
     console.log(`Client ${client.id} unsubscribed from room: ${room}`);
+    this.pubClient.publish(room, `Client ${client.id} unsubscribed from room: ${room}`);
   }
 
   // Send a message only to a specific room
@@ -94,18 +99,24 @@ export class WebsocketsModule implements OnGatewayConnection, OnGatewayDisconnec
   ) {
     const { room, sender, text } = data;
     console.log(`Message received in room ${room}: ${text} from ${sender}`);
-    this.pubClient.publish(room, JSON.stringify({sender, text}));
+    this.pubClient.publish(room, JSON.stringify({ sender, text }));
   }
 
   // Subscribe to Redis messages for a specific room
-  async subscribeToRedisRoom(roomName: string) {
-    this.subClient.subscribe(this.chatRoom, (message: string) => {
-      console.log(`Message received in room ${roomName} from Redis: ${message}`);
-    });
+  async subscribeToRedisRoom() {
+    console.log("Subscribing to Redis messages for rooms");
+
+    // Subscribe to Redis for the chatRoom
+    if (this.chatRoom) {
+      this.subClient.subscribe(this.chatRoom, (message: string) => {
+        console.log(`Message received in room ${this.chatRoom} from Redis: ${message}`);
+        this.server.to(this.chatRoom).emit('message', { room: this.chatRoom, message });
+      });
+    }
   }
 
-  publishMessage(room,sender,text){
-    this.pubClient.publish(room, JSON.stringify({sender, text}));
-  }
   // Publish a message to a specific Redis channel/room
+  publishMessage(room: string, sender: string, text: string) {
+    this.pubClient.publish(room, JSON.stringify({ sender, text }));
+  }
 }
