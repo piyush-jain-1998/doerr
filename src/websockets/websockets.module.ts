@@ -95,6 +95,7 @@ export class WebsocketsModule implements OnGatewayInit, OnGatewayConnection, OnG
     client.leave(room);
     this.pubClient.publish(room, `Client ${client.id} unsubscribed from room: ${room}`);
   }
+  
 
   // Send a message only to a specific room
   @SubscribeMessage('sendMessage')
