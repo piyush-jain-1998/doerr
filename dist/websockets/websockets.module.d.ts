@@ -11,7 +11,7 @@ export declare class WebsocketsModule implements OnGatewayInit, OnGatewayConnect
     connectRedisDb(): Promise<void>;
     handleConnection(client: Socket): void;
     handleDisconnect(client: Socket): void;
-    handleSubscribeToRoom(room: string, client: Socket): void;
+    handleSubscribeToRoom(room: string, client: Socket): Promise<void>;
     handleUnsubscribeFromRoom(room: string, client: Socket): void;
     handleMessage(data: {
         room: string;

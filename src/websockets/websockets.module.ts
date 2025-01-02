@@ -26,13 +26,17 @@ export class WebsocketsModule implements OnGatewayInit, OnGatewayConnection, OnG
   private chatRoom: string;
 
   async afterInit() {
-    console.log('WebSocket server initialized');
+    // console.log('WebSocket server initialized');
     this.subscribeToRedisRoom(); // Only subscribe once during initialization
+    this.chatRoom = "chat";
+    console.log(this.chatRoom);
+
   }
 
   async onModuleInit() {
     await this.connectRedisDb();
   }
+
 
   async connectRedisDb() {
     // Create and connect to the Redis client
@@ -55,12 +59,13 @@ export class WebsocketsModule implements OnGatewayInit, OnGatewayConnection, OnG
 
     // Connect the pub/sub clients to the Redis adapter
     this.server.adapter(createAdapter(this.pubClient, this.subClient));
-    console.log('Redis connected and Socket.IO server initialized');
+    // console.log('Redis connected and Socket.IO server initialized');
     this.pubClient.publish('connectInRedis', `New connection established`);
+    await this.subscribeToRedisRoom();
+
   }
 
   handleConnection(client: Socket) {
-    console.log(`Client connected: ${client.id}`);
     this.pubClient.publish('connectInRedis', `Client connected: ${client.id}`);
   }
 
@@ -70,13 +75,14 @@ export class WebsocketsModule implements OnGatewayInit, OnGatewayConnection, OnG
 
   // Client subscribes to a specific room
   @SubscribeMessage('subscribeToRoom')
-  handleSubscribeToRoom(
+  async handleSubscribeToRoom(
     @MessageBody() room: string,
     @ConnectedSocket() client: Socket,
   ) {
     this.chatRoom = room;
     client.join(room);
-    console.log(`Client ${client.id} subscribed to room: ${room}`);
+     // Subscribe to the Redis room
+    await this.subscribeToRedisRoom();
     this.pubClient.publish(room, `Client ${client.id} subscribed to room: ${room}`);
   }
 
@@ -87,7 +93,6 @@ export class WebsocketsModule implements OnGatewayInit, OnGatewayConnection, OnG
     @ConnectedSocket() client: Socket,
   ) {
     client.leave(room);
-    console.log(`Client ${client.id} unsubscribed from room: ${room}`);
     this.pubClient.publish(room, `Client ${client.id} unsubscribed from room: ${room}`);
   }
 
@@ -98,11 +103,11 @@ export class WebsocketsModule implements OnGatewayInit, OnGatewayConnection, OnG
     @ConnectedSocket() client: Socket,
   ) {
     const { room, sender, text } = data;
-    console.log(`Message received in room ${room}: ${text} from ${sender}`);
+    // console.log(`Message received in room ${room}: ${text} fromj ${sender}`);
     this.pubClient.publish(room, JSON.stringify({ sender, text }));
   }
 
-  // Subscribe to Redis messages for a specific room
+ // Subscribe to Redis messages for a specific room
   async subscribeToRedisRoom() {
     console.log("Subscribing to Redis messages for rooms");
 
@@ -114,7 +119,8 @@ export class WebsocketsModule implements OnGatewayInit, OnGatewayConnection, OnG
       });
     }
   }
-
+  
+  
   // Publish a message to a specific Redis channel/room
   publishMessage(room: string, sender: string, text: string) {
     this.pubClient.publish(room, JSON.stringify({ sender, text }));

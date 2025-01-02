@@ -67,14 +67,15 @@
       } else {
         alert('Please enter both room name and message!');
       }
+      socket.on('message', (message) => {
+      console.log("recived from server ",message);
+      let msg  = JSON.parse(message.message);
+      const messageElement = document.createElement('p');
+      messageElement.textContent = `${msg.sender}: ${msg.text}`;
+      messagesDiv.appendChild(messageElement);
     });
 
-    // Listen for messages
-    socket.on('message', (message) => {
-      console.log("recived from server ",message);
-      const messageElement = document.createElement('p');
-      messageElement.textContent = `${message.sender}: ${message.text}`;
-      messagesDiv.appendChild(messageElement);
+
     });
 
     // Handle connection events

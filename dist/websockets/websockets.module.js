@@ -20,8 +20,9 @@ const redis_adapter_1 = require("@socket.io/redis-adapter");
 const redis_1 = require("redis");
 let WebsocketsModule = class WebsocketsModule {
     async afterInit() {
-        console.log('WebSocket server initialized');
         this.subscribeToRedisRoom();
+        this.chatRoom = "chat";
+        console.log(this.chatRoom);
     }
     async onModuleInit() {
         await this.connectRedisDb();
@@ -41,30 +42,27 @@ let WebsocketsModule = class WebsocketsModule {
         this.subClient = this.pubClient.duplicate();
         await Promise.all([this.pubClient.connect(), this.subClient.connect()]);
         this.server.adapter((0, redis_adapter_1.createAdapter)(this.pubClient, this.subClient));
-        console.log('Redis connected and Socket.IO server initialized');
         this.pubClient.publish('connectInRedis', `New connection established`);
+        await this.subscribeToRedisRoom();
     }
     handleConnection(client) {
-        console.log(`Client connected: ${client.id}`);
         this.pubClient.publish('connectInRedis', `Client connected: ${client.id}`);
     }
     handleDisconnect(client) {
         console.log(`Client disconnected: ${client.id}`);
     }
-    handleSubscribeToRoom(room, client) {
+    async handleSubscribeToRoom(room, client) {
         this.chatRoom = room;
         client.join(room);
-        console.log(`Client ${client.id} subscribed to room: ${room}`);
+        await this.subscribeToRedisRoom();
         this.pubClient.publish(room, `Client ${client.id} subscribed to room: ${room}`);
     }
     handleUnsubscribeFromRoom(room, client) {
         client.leave(room);
-        console.log(`Client ${client.id} unsubscribed from room: ${room}`);
         this.pubClient.publish(room, `Client ${client.id} unsubscribed from room: ${room}`);
     }
     handleMessage(data, client) {
         const { room, sender, text } = data;
-        console.log(`Message received in room ${room}: ${text} from ${sender}`);
         this.pubClient.publish(room, JSON.stringify({ sender, text }));
     }
     async subscribeToRedisRoom() {
@@ -91,7 +89,7 @@ __decorate([
     __param(1, (0, websockets_1.ConnectedSocket)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, socket_io_1.Socket]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], WebsocketsModule.prototype, "handleSubscribeToRoom", null);
 __decorate([
     (0, websockets_1.SubscribeMessage)('unsubscribeFromRoom'),
